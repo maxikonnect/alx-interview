@@ -1,50 +1,68 @@
 #!/usr/bin/python3
+"""Write a script that reads stdin line by line and computes metrics:
+
+Input format: <IP Address> - [<date>] "GET /projects/260 HTTP/1.1"
+<status code> <file size> (if the format is not this one, the line
+must be skipped)
+After every 10 lines and/or a keyboard interruption (CTRL + C),
+print these statistics from the beginning:
+Total file size: File size: <total size>
+where <total size> is the sum of all previous <file size>
+(see input format above)
+Number of lines by status code:
+possible status code: 200, 301, 400, 401, 403, 404, 405 and 500
+if a status code doesn’t appear or is not an integer,
+don’t print anything for this status code
+format: <status code>: <number>
+status codes should be printed in ascending order
+
+line list = [<IP Address>, -, [<date>], "GET /projects/260 HTTP/1.1",
+<status code>, <file size>]
 """
-log parsing
-"""
+
 
 import sys
-import re
 
+# store the count of all status codes in a dictionary
+status_codes_dict = {'200': 0, '301': 0, '400': 0, '401': 0, '403': 0,
+                     '404': 0, '405': 0, '500': 0}
 
-def output(log: dict) -> None:
-    """
-    helper function to display stats
-    """
-    print("File size: {}".format(log["file_size"]))
-    for code in sorted(log["code_frequency"]):
-        if log["code_frequency"][code]:
-            print("{}: {}".format(code, log["code_frequency"][code]))
+total_size = 0
+count = 0  # keep count of the number lines counted
 
+try:
+    for line in sys.stdin:
+        line_list = line.split(" ")
 
-if __name__ == "__main__":
-    regex = re.compile(
-    r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} - \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d+\] "GET /projects/260 HTTP/1.1" (.{3}) (\d+)')  # nopep8
+        if len(line_list) > 4:
+            status_code = line_list[-2]
+            file_size = int(line_list[-1])
 
-    line_count = 0
-    log = {}
-    log["file_size"] = 0
-    log["code_frequency"] = {
-        str(code): 0 for code in [
-            200, 301, 400, 401, 403, 404, 405, 500]}
+            # check if the status code receive exists in the dictionary and
+            # increment its count
+            if status_code in status_codes_dict.keys():
+                status_codes_dict[status_code] += 1
 
-    try:
-        for line in sys.stdin:
-            line = line.strip()
-            match = regex.fullmatch(line)
-            if (match):
-                line_count += 1
-                code = match.group(1)
-                file_size = int(match.group(2))
+            # update total size
+            total_size += file_size
 
-                # File size
-                log["file_size"] += file_size
+            # update count of lines
+            count += 1
 
-                # status code
-                if (code.isdecimal()):
-                    log["code_frequency"][code] += 1
+        if count == 10:
+            count = 0  # reset count
+            print('File size: {}'.format(total_size))
 
-                if (line_count % 10 == 0):
-                    output(log)
-    finally:
-        output(log)
+            # print out status code counts
+            for key, value in sorted(status_codes_dict.items()):
+                if value != 0:
+                    print('{}: {}'.format(key, value))
+
+except Exception as err:
+    pass
+
+finally:
+    print('File size: {}'.format(total_size))
+    for key, value in sorted(status_codes_dict.items()):
+        if value != 0:
+            print('{}: {}'.format(key, value))
